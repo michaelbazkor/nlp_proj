@@ -1,0 +1,22 @@
+# SSRisk pipeline configuration
+
+llm:
+  provider: mock  # mock | openai | anthropic | ollama
+  model: gpt-4o
+  temperature: 0.2
+
+data:
+  features_path: data/synthetic_users.csv
+  posts_path: data/posts.json
+  n_users: 50
+  random_seed: 42
+  min_posts: 10
+  valid_groups: [0, 1]
+
+pipeline:
+  dev_split: 0.1
+  max_test_users: null  # null = all test users; set e.g. 5 for quick runs
+  output_dir: outputs
+
+evaluation:
+  binary_sd_threshold: 1  # SD >= 1 => general suicide risk (binary)
