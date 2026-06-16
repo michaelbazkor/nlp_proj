@@ -30,6 +30,7 @@ def create_llm_client(config: dict[str, Any] | None = None) -> LLMClient:
     if provider == "ollama":
         from ssrisk.llm.ollama_client import OllamaClient
 
-        return OllamaClient(model=model, temperature=temperature)
+        ollama_model = os.getenv("OLLAMA_MODEL") or model
+        return OllamaClient(model=ollama_model, temperature=temperature)
 
     raise ValueError(f"Unknown LLM provider: {provider}. Use mock|openai|anthropic|ollama.")

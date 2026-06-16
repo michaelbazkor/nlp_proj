@@ -1,4 +1,4 @@
-"""Ollama LLM client stub."""
+"""Ollama LLM client."""
 
 from __future__ import annotations
 
@@ -33,20 +33,14 @@ class OllamaClient(LLMClient):
         user_context: str,
         response_schema: Type[T],
     ) -> T:
-        schema_json = json.dumps(response_schema.model_json_schema(), indent=2)
         payload = {
             "model": self.model,
             "stream": False,
+            "format": response_schema.model_json_schema(),
             "options": {"temperature": self.temperature},
             "messages": [
                 {"role": "system", "content": system_prompt},
-                {
-                    "role": "user",
-                    "content": (
-                        f"{user_context}\n\n"
-                        f"Respond ONLY with JSON matching:\n{schema_json}"
-                    ),
-                },
+                {"role": "user", "content": user_context},
             ],
         }
         req = urllib.request.Request(
@@ -58,9 +52,5 @@ class OllamaClient(LLMClient):
         with urllib.request.urlopen(req, timeout=120) as resp:
             body = json.loads(resp.read().decode())
         text = body["message"]["content"]
-        start = text.find("{")
-        end = text.rfind("}") + 1
-        if start < 0 or end <= start:
-            raise RuntimeError("Ollama response did not contain JSON object.")
-        data = json.loads(text[start:end])
+        data = json.loads(text)
         return response_schema.model_validate(data)

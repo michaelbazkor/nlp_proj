@@ -1,8 +1,8 @@
 # SSRisk pipeline configuration
 
 llm:
-  provider: mock  # mock | openai | anthropic | ollama
-  model: gpt-4o
+  provider: ollama  # mock | openai | anthropic | ollama
+  model: llama3.1
   temperature: 0.2
 
 data:
@@ -15,7 +15,7 @@ data:
 
 pipeline:
   dev_split: 0.1
-  max_test_users: null  # null = all test users; set e.g. 5 for quick runs
+  max_test_users: 10  # null = all test users; set e.g. 5 for quick runs
   output_dir: outputs
 
 evaluation:
