@@ -12,8 +12,8 @@ class RiskAgent(BaseAgent):
     name = "risk"
     response_schema = RiskOutput
 
-    def __init__(self, client):
-        super().__init__(client, RISK_SYSTEM)
+    def __init__(self, client, context_budget=None):
+        super().__init__(client, RISK_SYSTEM, context_budget=context_budget)
 
     def build_few_shot(self, dev_examples: list) -> str:
         return format_few_shot_examples(

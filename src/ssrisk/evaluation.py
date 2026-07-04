@@ -46,7 +46,7 @@ def _erfinv(x: float) -> float:
 
 def evaluate_results(
     results_path: str | Path,
-    binary_sd_threshold: int = 1,
+    binary_sd_positive_min: int = 5,
 ) -> dict[str, Any]:
     """Compute metrics comparing predictions to ground truth."""
     df = pd.read_csv(results_path)
@@ -75,35 +75,42 @@ def evaluate_results(
         report["metrics"][true_col] = {"pearson_r": pearson, "mae": mae}
 
     if "true_MDD" in df.columns and "pred_MDD" in df.columns:
-        y_true = df["true_MDD"].astype(int)
-        y_pred = df["pred_MDD"].astype(int)
-        report["metrics"]["MDD"] = {
-            "accuracy": float(accuracy_score(y_true, y_pred)),
-            "f1": float(f1_score(y_true, y_pred, zero_division=0)),
-        }
+        mask = df["true_MDD"].notna() & df["pred_MDD"].notna()
+        if mask.sum() >= 1:
+            y_true = df.loc[mask, "true_MDD"].astype(int)
+            y_pred = df.loc[mask, "pred_MDD"].astype(int)
+            report["metrics"]["MDD"] = {
+                "accuracy": float(accuracy_score(y_true, y_pred)),
+                "f1": float(f1_score(y_true, y_pred, zero_division=0)),
+            }
 
     if "true_SD" in df.columns and "pred_SD" in df.columns:
-        y_true_bin = (df["true_SD"] >= binary_sd_threshold).astype(int)
-        y_pred_bin = (df["pred_SD"] >= binary_sd_threshold).astype(int)
-        y_pred_score = df["pred_SD"].astype(float)
+        sd_mask = df["true_SD"].notna() & df["pred_SD"].notna()
+        if sd_mask.sum() >= 1:
+            y_true_sd = df.loc[sd_mask, "true_SD"].astype(float)
+            y_pred_sd = df.loc[sd_mask, "pred_SD"].astype(float)
+            y_true_bin = (y_true_sd >= binary_sd_positive_min).astype(int)
+            y_pred_bin = (y_pred_sd >= binary_sd_positive_min).astype(int)
 
-        try:
-            auc = float(roc_auc_score(y_true_bin, y_pred_score))
-            cohens_d = auc_to_cohens_d(auc)
-        except ValueError:
-            auc = None
-            cohens_d = None
+            try:
+                auc = float(roc_auc_score(y_true_bin, y_pred_sd)) if sd_mask.sum() >= 2 else None
+                cohens_d = auc_to_cohens_d(auc) if auc is not None else None
+            except ValueError:
+                auc = None
+                cohens_d = None
 
-        report["metrics"]["SD_binary"] = {
-            "threshold": binary_sd_threshold,
-            "auc": auc,
-            "cohens_d": cohens_d,
-            "accuracy": float(accuracy_score(y_true_bin, y_pred_bin)),
-            "f1": float(f1_score(y_true_bin, y_pred_bin, zero_division=0)),
-        }
-        report["metrics"]["SD_continuous"] = {
-            "mae": float(mean_absolute_error(df["true_SD"], df["pred_SD"])),
-        }
+            report["metrics"]["SD_binary"] = {
+                "positive_min": binary_sd_positive_min,
+                "positive_range": "[5, 6]",
+                "negative_range": "[0, 4]",
+                "auc": auc,
+                "cohens_d": cohens_d,
+                "accuracy": float(accuracy_score(y_true_bin, y_pred_bin)),
+                "f1": float(f1_score(y_true_bin, y_pred_bin, zero_division=0)),
+            }
+            report["metrics"]["SD_continuous"] = {
+                "mae": float(mean_absolute_error(y_true_sd, y_pred_sd)),
+            }
 
     return report
 
@@ -111,12 +118,12 @@ def evaluate_results(
 def save_evaluation_report(
     results_path: str | Path,
     output_dir: str | Path,
-    binary_sd_threshold: int = 1,
+    binary_sd_positive_min: int = 5,
 ) -> Path:
     """Evaluate and save JSON report."""
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
-    report = evaluate_results(results_path, binary_sd_threshold=binary_sd_threshold)
+    report = evaluate_results(results_path, binary_sd_positive_min=binary_sd_positive_min)
     out_path = output_dir / "evaluation_report.json"
     with open(out_path, "w", encoding="utf-8") as f:
         json.dump(report, f, indent=2)

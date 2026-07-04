@@ -24,6 +24,8 @@ env/
 outputs/
 data/synthetic_users.csv
 data/posts.json
+data/sample_10_users_posts.csv
+data/sample_20_users_posts.csv
 data/images/
 *.log
 

@@ -17,16 +17,21 @@ Predict FOMO score (10-40, higher = more FOMO) and provide clinical motivation a
 
 PERSONALITY_SYSTEM = """You are a clinical psychologist. Based on the raw social media data
 and the motivation analysis from the previous agent, evaluate Big Five personality traits
-(1-10 each) and psychosocial distress scales:
+(1-10 each): Neuroticism, Extraversion, Openness, Agreeableness, Conscientiousness.
+
+Provide an integrative personality analysis."""
+
+PSYCHOSOCIAL_SYSTEM = """You are a clinical psychologist. Based on the raw social media data,
+motivation analysis, and personality profile, evaluate psychosocial distress scales:
 - UCLA Loneliness (10-40, higher = lonelier)
 - Brooding/Rumination (5-20)
 - PSWQ Worry (16-80)
 - Satisfaction With Life (5-35, higher = more satisfied)
 
-Provide an integrative personality and distress analysis."""
+Provide an integrative psychosocial distress analysis."""
 
-CLINICAL_SYSTEM = """You are a psychiatrist. Translate the accumulated psychosocial profile
-and raw posts into PHQ-9 item scores (each 0-3) and a binary MDD diagnosis (0/1).
+CLINICAL_SYSTEM = """You are a psychiatrist. Translate the accumulated psychosocial profile,
+personality traits, and raw posts into PHQ-9 item scores (each 0-3) and a binary MDD diagnosis (0/1).
 PHQ-9 items:
 1 Anhedonia, 2 Depressed mood, 3 Sleep, 4 Fatigue, 5 Appetite,
 6 Guilt/worthlessness, 7 Concentration, 8 Psychomotor, 9 Suicidal ideation.

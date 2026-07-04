@@ -3,13 +3,17 @@
 from __future__ import annotations
 
 import json
+import logging
 import os
 from typing import Type, TypeVar
 
 import urllib.request
 from pydantic import BaseModel
 
+from ssrisk.context.budget import estimate_tokens
 from ssrisk.llm.base import LLMClient
+
+logger = logging.getLogger(__name__)
 
 T = TypeVar("T", bound=BaseModel)
 
@@ -33,6 +37,13 @@ class OllamaClient(LLMClient):
         user_context: str,
         response_schema: Type[T],
     ) -> T:
+        prompt_tokens = estimate_tokens(system_prompt) + estimate_tokens(user_context)
+        if prompt_tokens > 7000:
+            logger.warning(
+                "Ollama prompt may exceed context window: ~%d input tokens (model=%s)",
+                prompt_tokens,
+                self.model,
+            )
         payload = {
             "model": self.model,
             "stream": False,
@@ -49,7 +60,7 @@ class OllamaClient(LLMClient):
             headers={"Content-Type": "application/json"},
             method="POST",
         )
-        with urllib.request.urlopen(req, timeout=120) as resp:
+        with urllib.request.urlopen(req, timeout=600) as resp:
             body = json.loads(resp.read().decode())
         text = body["message"]["content"]
         data = json.loads(text)

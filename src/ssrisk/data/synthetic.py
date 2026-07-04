@@ -159,7 +159,7 @@ def generate_synthetic_users(
             "MDD": mdd,
             "GAD": gad,
             "SD": sd,
-            "suicide": 1 if sd >= 1 else 0,
+            "suicide": 1 if sd >= 5 else 0,
         }
         rows.append(row)
 

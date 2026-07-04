@@ -1,9 +1,13 @@
-"""TabSTAR-style user context serialization."""
+"""User context serialization for LLM agents."""
 
 from __future__ import annotations
 
 from typing import Any
 
+from ssrisk.context.budget import (
+    truncate_agent_output_payload,
+    truncate_posts_in_context,
+)
 from ssrisk.data.schema import UserRecord
 from ssrisk.schemas import ImageCaptionOutput
 
@@ -12,10 +16,12 @@ def build_user_context(
     user: UserRecord,
     image_captions: list[ImageCaptionOutput] | None = None,
     extra_sections: list[str] | None = None,
+    max_post_tokens: int | None = None,
+    truncation_strategy: str = "tail_posts",
 ) -> str:
     """
     Serialize user profile, chronological posts, and image descriptions
-    into a single text block for LLM agents (TabSTAR-style).
+    into a single text block for LLM agents.
     """
     p = user.profile
     gender = "Female" if p.get("female") == 1 else "Male"
@@ -62,12 +68,22 @@ def build_user_context(
     if extra_sections:
         sections.extend(extra_sections)
 
-    return "\n".join(sections)
+    context = "\n".join(sections)
+    if max_post_tokens is not None:
+        context = truncate_posts_in_context(context, max_post_tokens, strategy=truncation_strategy)
+    return context
 
 
-def append_agent_output(context: str, agent_name: str, payload: Any) -> str:
+def append_agent_output(
+    context: str,
+    agent_name: str,
+    payload: Any,
+    max_agent_output_tokens: int | None = None,
+) -> str:
     """Append structured agent output to accumulated context."""
-    if hasattr(payload, "model_dump_json"):
+    if max_agent_output_tokens is not None:
+        body = truncate_agent_output_payload(payload, max_agent_output_tokens)
+    elif hasattr(payload, "model_dump_json"):
         body = payload.model_dump_json(indent=2)
     else:
         body = str(payload)

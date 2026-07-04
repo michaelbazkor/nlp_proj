@@ -46,12 +46,18 @@ class PersonalityOutput(BaseModel):
     pred_BFI_O: int = Field(ge=1, le=10, description="Predicted Openness score (Big Five, 1-10)")
     pred_BFI_A: int = Field(ge=1, le=10, description="Predicted Agreeableness score (Big Five, 1-10)")
     pred_BFI_C: int = Field(ge=1, le=10, description="Predicted Conscientiousness score (Big Five, 1-10)")
+    personality_analysis: str = Field(
+        description="Analysis of Big Five personality traits based on motivation and posts"
+    )
+
+
+class PsychosocialOutput(BaseModel):
     pred_Lonely: int = Field(ge=10, le=40, description="Predicted UCLA Loneliness score (10-40)")
     pred_Brooding: int = Field(ge=5, le=20, description="Predicted Brooding/Rumination score (5-20)")
     pred_Worry: int = Field(ge=16, le=80, description="Predicted PSWQ Worry score (16-80)")
     pred_SWL: int = Field(ge=5, le=35, description="Predicted Satisfaction With Life score (5-35)")
-    personality_analysis: str = Field(
-        description="Analysis of traits and psychosocial distress based on motivation"
+    psychosocial_analysis: str = Field(
+        description="Analysis of psychosocial distress based on personality and motivation"
     )
 
 

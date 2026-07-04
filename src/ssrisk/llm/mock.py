@@ -16,6 +16,7 @@ from ssrisk.schemas import (
     MotivationCategory,
     MotivationOutput,
     PersonalityOutput,
+    PsychosocialOutput,
     RiskOutput,
 )
 
@@ -40,6 +41,8 @@ class MockLLMClient(LLMClient):
             return self._motivation(distress, seed)  # type: ignore[return-value]
         if response_schema is PersonalityOutput:
             return self._personality(distress, seed)  # type: ignore[return-value]
+        if response_schema is PsychosocialOutput:
+            return self._psychosocial(distress, seed)  # type: ignore[return-value]
         if response_schema is ClinicalOutput:
             return self._clinical(distress, seed)  # type: ignore[return-value]
         if response_schema is RiskOutput:
@@ -127,15 +130,24 @@ class MockLLMClient(LLMClient):
             pred_BFI_O=self._scale(0.5, 1, 10, seed + 2),
             pred_BFI_A=self._scale(0.55, 1, 10, seed + 3),
             pred_BFI_C=self._scale(0.5, 1, 10, seed + 4),
+            personality_analysis=(
+                "Elevated neuroticism aligns with distress-laden language in posts."
+                if distress > 0.4
+                else "Personality profile suggests moderate emotional stability with typical social engagement."
+            ),
+        )
+
+    def _psychosocial(self, distress: float, seed: int) -> PsychosocialOutput:
+        return PsychosocialOutput(
             pred_Lonely=self._scale(distress, 10, 40, seed + 5),
             pred_Brooding=self._scale(distress, 5, 20, seed + 6),
             pred_Worry=self._scale(distress, 16, 80, seed + 7),
             pred_SWL=self._scale(1 - distress, 5, 35, seed + 8),
-            personality_analysis=(
-                "Elevated neuroticism and loneliness indicators align with distress-laden language. "
+            psychosocial_analysis=(
+                "Elevated loneliness and brooding indicators align with distress-laden language. "
                 "Life satisfaction appears reduced relative to baseline norms."
                 if distress > 0.4
-                else "Personality profile suggests moderate emotional stability with typical social engagement."
+                else "Psychosocial profile suggests moderate distress within typical norms."
             ),
         )
 
@@ -161,17 +173,19 @@ class MockLLMClient(LLMClient):
         )
 
     def _risk(self, distress: float, seed: int) -> RiskOutput:
-        sd = self._scale(distress, 0, 6, seed, jitter=1)
-        if sd == 0 and distress > 0.25:
-            sd = 1
+        if distress > 0.7:
+            sd = self._scale(distress, 4, 6, seed, jitter=1)
+        elif distress > 0.5:
+            sd = self._scale(distress, 2, 4, seed, jitter=1)
+        elif distress > 0.35:
+            sd = self._scale(distress, 1, 2, seed, jitter=0)
+        else:
+            sd = 0
         return RiskOutput(
             pred_SD=sd,
             risk_analysis=(
-                f"CSSRS severity estimate: {sd}/6. "
-                + (
-                    "Passive ideation or elevated distress markers present in language."
-                    if sd >= 1
-                    else "No clear suicidal ideation detected from accumulated profile."
-                )
+                f"C-SSRS severity {sd}/6 based on accumulated clinical indicators. "
+                f"{'Elevated' if sd >= 5 else 'Moderate' if sd >= 1 else 'Low'} suicide risk signals."
             ),
         )
+

@@ -11,8 +11,8 @@ class ImageCaptionAgent(BaseAgent):
     name = "image_caption"
     response_schema = ImageCaptionBatchOutput
 
-    def __init__(self, client):
-        super().__init__(client, IMAGE_CAPTION_SYSTEM)
+    def __init__(self, client, context_budget=None):
+        super().__init__(client, IMAGE_CAPTION_SYSTEM, context_budget=context_budget)
 
     def build_few_shot(self, dev_examples: list) -> str:
         return ""

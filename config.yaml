@@ -5,7 +5,25 @@ llm:
   model: llama3.1
   temperature: 0.2
 
+agents:
+  image_caption:
+    temperature: 0.1
+  motivation: {}
+  personality: {}
+  psychosocial: {}
+  clinical: {}
+  risk: {}
+
+context:
+  max_input_tokens: 8192
+  reserve_output_tokens: 1024
+  truncation_strategy: tail_posts
+  max_few_shot_tokens: 1500
+  max_agent_output_tokens: 800
+
 data:
+  posts_csv_path: data/sample_20_users_posts.csv
+  max_posts_per_user: 50  # cap long histories for local LLM context limits
   features_path: data/synthetic_users.csv
   posts_path: data/posts.json
   n_users: 50
@@ -15,8 +33,14 @@ data:
 
 pipeline:
   dev_split: 0.1
-  max_test_users: 10  # null = all test users; set e.g. 5 for quick runs
-  output_dir: outputs
+  min_dev_users: 3
+  max_test_users: null
+  output_dir: outputs/real_sample_20
 
 evaluation:
-  binary_sd_threshold: 1  # SD >= 1 => general suicide risk (binary)
+  binary_sd_positive_min: 5  # SD >= 5 => positive; SD <= 4 => negative
+
+finetune:
+  output_dir: outputs/finetune
+  modelfile_dir: outputs/modelfiles
+  base_model: llama3.1
