@@ -29,13 +29,14 @@ def main():
 
     os.makedirs(output_base_dir, exist_ok=True)
 
-    dataset_files = glob.glob(os.path.join(input_dir, "*.jsonl"))
+    # Locate only the training files to drive the loop
+    train_files = glob.glob(os.path.join(input_dir, "*_train.jsonl"))
 
-    if not dataset_files:
-        print(f"No .jsonl files found in '{input_dir}'. Exiting.")
+    if not train_files:
+        print(f"No '*_train.jsonl' files found in '{input_dir}'. Exiting.")
         return
 
-    print(f"Found {len(dataset_files)} dataset(s) to process.")
+    print(f"Found {len(train_files)} agent(s) to train based on train files.")
 
     model_name = "meta-llama/Meta-Llama-3.1-8B-Instruct"
 
@@ -55,32 +56,38 @@ def main():
         target_modules=["q_proj", "k_proj", "v_proj", "o_proj", "gate_proj", "up_proj", "down_proj"]
     )
 
-    for dataset_path in dataset_files:
-        file_name = os.path.basename(dataset_path)
-        agent_name = os.path.splitext(file_name)[0]
+    for train_path in train_files:
+        # Extract the base agent name (e.g., 'agent1_motivation' from 'agent1_motivation_train.jsonl')
+        file_name = os.path.basename(train_path)
+        agent_name = file_name.replace('_train.jsonl', '')
+
+        # Construct paths for validation and test files
+        val_path = os.path.join(input_dir, f"{agent_name}_val.jsonl")
+        test_path = os.path.join(input_dir, f"{agent_name}_test.jsonl")
+
         output_dir = os.path.join(output_base_dir, f"lora_{agent_name}")
 
         print(f"\n{'=' * 50}")
         print(f"Processing agent: {agent_name}")
 
+        if not os.path.exists(val_path) or not os.path.exists(test_path):
+            print(f"Skipping {agent_name} - Missing val or test file in '{input_dir}'.")
+            continue
+
         tokenizer = AutoTokenizer.from_pretrained(model_name)
         tokenizer.pad_token = tokenizer.eos_token
         tokenizer.padding_side = "right"
 
-        # Load the full dataset
-        raw_dataset = load_dataset("json", data_files=dataset_path, split="train")
-        raw_dataset = raw_dataset.map(format_instruction)
+        # Load specific pre-split datasets
+        train_dataset = load_dataset("json", data_files=train_path, split="train")
+        train_dataset = train_dataset.map(format_instruction)
 
-        # Create a Train / Test split (90% training, 10% validation/testing)
-        split_dataset = raw_dataset.train_test_split(test_size=0.1, seed=42)
-        train_dataset = split_dataset["train"]
-        eval_dataset = split_dataset["test"]
+        eval_dataset = load_dataset("json", data_files=val_path, split="train")
+        eval_dataset = eval_dataset.map(format_instruction)
 
-        # Save the test dataset for post-training inference evaluation
-        test_file_path = os.path.join(output_base_dir, f"test_data_{agent_name}.jsonl")
-        eval_dataset.to_json(test_file_path)
-        print(f"Saved {len(eval_dataset)} test samples to: {test_file_path}")
         print(f"Training on {len(train_dataset)} samples.")
+        print(f"Validating on {len(eval_dataset)} samples.")
+        print(f"Test file is ready at: {test_path} (Will be used for evaluation later)")
 
         model = AutoModelForCausalLM.from_pretrained(
             model_name,
@@ -90,7 +97,6 @@ def main():
         model = prepare_model_for_kbit_training(model)
         model = get_peft_model(model, peft_config)
 
-        # Configure Training Arguments with Evaluation enabled
         training_arguments = TrainingArguments(
             output_dir=output_dir,
             per_device_train_batch_size=2,
@@ -99,7 +105,7 @@ def main():
             optim="paged_adamw_32bit",
             save_strategy="epoch",
             eval_strategy="steps",
-            eval_steps=50,  # Evaluates and prints loss every 50 steps
+            eval_steps=50,
             logging_steps=10,
             learning_rate=2e-4,
             fp16=True,
@@ -114,7 +120,7 @@ def main():
         trainer = SFTTrainer(
             model=model,
             train_dataset=train_dataset,
-            eval_dataset=eval_dataset,  # Passing the validation set here
+            eval_dataset=eval_dataset,
             peft_config=peft_config,
             dataset_text_field="text",
             max_seq_length=2048,

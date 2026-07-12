@@ -50,13 +50,15 @@ def flatten_dict(d, parent_key='', sep='_'):
 
 
 def main():
+    input_dir = "LoRA inputs"
     weights_dir = "LoRA Weights"
     base_model_id = "meta-llama/Meta-Llama-3.1-8B-Instruct"
 
-    test_files = glob.glob(os.path.join(weights_dir, "test_data_*.jsonl"))
+    # Search for the test files in the inputs directory
+    test_files = glob.glob(os.path.join(input_dir, "*_test.jsonl"))
 
     if not test_files:
-        print("No test dataset files found. Please ensure training completed successfully.")
+        print(f"No test dataset files found in {input_dir}. Please ensure files were generated.")
         return
 
     print(f"Loading Base Model in 4-bit: {base_model_id}...")
@@ -76,7 +78,8 @@ def main():
 
     for test_file in test_files:
         filename = os.path.basename(test_file)
-        agent_name = filename.replace("test_data_", "").replace(".jsonl", "")
+        # Extract the base agent name (e.g., from 'agent1_motivation_test.jsonl' -> 'agent1_motivation')
+        agent_name = filename.replace("_test.jsonl", "")
         adapter_path = os.path.join(weights_dir, f"lora_{agent_name}")
 
         if not os.path.exists(adapter_path):
